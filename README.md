@@ -10,7 +10,7 @@ This Action commits the contents of your Git tag to the WordPress.org plugin rep
 * `SVN_USERNAME`
 * `SVN_PASSWORD`
 
-[Secrets are set in your repository settings](https://help.github.com/en/articles/virtual-environments-for-github-actions#creating-and-using-secrets-encrypted-variables). They cannot be viewed once stored.
+[Secrets are set in your repository settings](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets). They cannot be viewed once stored.
 
 ### Optional environment variables
 * `SLUG` - defaults to the repository name, customizable in case your WordPress repository has a different slug or is capitalized differently.
@@ -51,7 +51,12 @@ If there are files or directories to be excluded from deployment, such as tests 
 ```
 
 
-## Example Workflow File
+## Example Workflow Files
+
+To get started, you will want to copy the contents of one of these examples into `.github/workflows/deploy.yml` and push that to your repository. You are welcome to name the file something else.
+
+### Deploy on pushing a new tag
+
 ```yml
 name: Deploy to WordPress.org
 on:
@@ -64,16 +69,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
+    - name: Build # Remove or modify this step as needed
+      run: |
+        npm install
+        npm run build
+    - name: WordPress Plugin Deploy
+      uses: 10up/action-wordpress-plugin-deploy@stable
+      env:
+        SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+        SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+        SLUG: my-super-cool-plugin # optional, remove if GitHub repo name matches SVN slug, including capitalization
+```
+
+### Deploy on publishing a new release and attach a ZIP file to the release
+```yml
+name: Deploy to WordPress.org
+on:
+  release:
+    types: [published]
+jobs:
+  tag:
+    name: New release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
     - name: Build
       run: |
         npm install
         npm run build
     - name: WordPress Plugin Deploy
-      uses: 10up/action-wordpress-plugin-deploy@master
+      id: deploy
+      uses: 10up/action-wordpress-plugin-deploy@stable
+      with:
+        generate-zip: true
       env:
-        SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
         SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-        SLUG: my-super-cool-plugin
+        SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ${{github.workspace}}/${{ github.event.repository.name }}.zip
+        asset_name: ${{ github.event.repository.name }}.zip
+        asset_content_type: application/zip
 ```
 
 ## Contributing
