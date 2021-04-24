@@ -136,6 +136,7 @@ if ! $GENERATE_ZIP; then
   cd "$SVN_DIR/trunk" || exit
   zip -r "${GITHUB_WORKSPACE}/${SLUG}.zip" .
   ls "$GITHUB_WORKSPACE"
+  echo "$GITHUB_WORKSPACE"
   echo "✓ Zip file generated!"
 fi
 
